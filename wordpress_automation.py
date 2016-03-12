@@ -1,8 +1,10 @@
 import boto3
-#WordPress project:
-#Create two security groups:
-	#1: myWebDMZ security group: INBOUND open ssh, http and https, Outbound: everything allowed
-	#2: RDSsecuritygroup: inbound: allow mysql port 3306 from Source MyWebDMZsecuritygroup.
+#W ordPress project:
+# Create two security groups:
+	# 1: myWebDMZ security group: INBOUND open ssh, http and https, Outbound: everything allowed
+	# 2: RDSsecuritygroup: inbound: allow mysql port 3306 from Source MyWebDMZsecuritygroup.
+
+# Create the AMI (Amazon Machine Image)    
 
 client = boto3.client('ec2')
 # Get the default VPC's ID. We can create our own VPC later on.
