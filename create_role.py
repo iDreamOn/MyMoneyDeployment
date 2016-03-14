@@ -10,3 +10,7 @@ policy = client.attach_role_policy(
     RoleName=s3role[u'Role'][u'RoleName'],
     PolicyArn='arn:aws:iam::aws:policy/AmazonS3FullAccess'
 )
+
+client = boto3.client('ec2')
+
+# create the EC2 instance with the proper information.
