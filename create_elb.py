@@ -1,6 +1,11 @@
 import boto3
+import datetime
 
 client = boto3.client('elb')
+
+t = datetime.datetime.now()
+e = t.strftime('%m/%d/%Y/%H/%M/%S')
+name1 = 'TESTELB_'+ e
 
 elb = client.create_load_balancer(
     LoadBalancerName='MyTestLB12',
