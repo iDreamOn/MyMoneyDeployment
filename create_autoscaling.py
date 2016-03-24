@@ -7,7 +7,8 @@ t = datetime.datetime.now()
 e = t.strftime('%m_%d_%Y_%H_%M_%S')
 name1 = 'TESTLaunchConf_'+ e
 name2 = 'TESTAutoScaling_' + e
-'''
+
+# Create launch configuration
 response = client.create_launch_configuration(
     LaunchConfigurationName=name1,
     ImageId='ami-71cdf01b',
@@ -34,7 +35,7 @@ response = client.create_launch_configuration(
     EbsOptimized=False
 )
 
-
+# create auto scaling group
 response = client.create_auto_scaling_group(
     AutoScalingGroupName=name2,
     LaunchConfigurationName=name1,
@@ -65,25 +66,81 @@ response = client.create_auto_scaling_group(
         },
     ]
 )
-'''
-name2='TESTAutoScaling_03_24_2016_16_33_27'
 
-#put scaling policy to decrease
-response = client.put_scaling_policy(
+# put scaling policy to decrease
+policy1 = client.put_scaling_policy(
     AutoScalingGroupName=name2,
     PolicyName='Decrease Group Size',
     PolicyType='SimpleScaling',
     AdjustmentType='ChangeInCapacity',
     ScalingAdjustment=-1,
 )
-#put alarm for policy
 
-
-#put scaling policy to increase
-response = client.put_scaling_policy(
+# put scaling policy to increase
+policy2 = client.put_scaling_policy(
     AutoScalingGroupName=name2,
     PolicyName='Increase Group Size',
     PolicyType='SimpleScaling',
     AdjustmentType='ChangeInCapacity',
     ScalingAdjustment=1,
 )
+# Create a SNS topic
+client = boto3.client('sns')
+mytopic = client.create_topic(
+    Name='AlertMeonEmailPLZ_'+e
+)
+mysubscription = client.subscribe(
+    TopicArn=mytopic[u'TopicArn'],
+    Protocol='email',
+    Endpoint='sns@uzuro.33mail.com'
+)
+
+
+# put alarm for policy
+client = boto3.client('cloudwatch')
+# alarm for decrease policy
+response = client.put_metric_alarm(
+    AlarmName='CPUbelow80',
+    AlarmDescription='alert if CPU utilization is below 80%',
+    ActionsEnabled=True,
+    AlarmActions=[
+        policy1[u'PolicyARN'], mytopic[u'TopicArn'],
+    ],
+    MetricName='CPUUtilization',
+    Namespace='AWS/EC2',
+    Statistic='Average',
+    Dimensions=[
+        {
+            'Name': 'AutoScalingGroupName',
+            'Value': name2
+        },
+    ],
+    Period=300,
+    EvaluationPeriods=1,
+    Threshold=80,
+    ComparisonOperator='LessThanOrEqualToThreshold'
+)
+
+# alarm for increase policy
+response = client.put_metric_alarm(
+    AlarmName='CPUover80',
+    AlarmDescription='alert if CPU utilization is above 80%',
+    ActionsEnabled=True,
+    AlarmActions=[
+        policy2[u'PolicyARN'], mytopic[u'TopicArn'],
+    ],
+    MetricName='CPUUtilization',
+    Namespace='AWS/EC2',
+    Statistic='Average',
+    Dimensions=[
+        {
+            'Name': 'AutoScalingGroupName',
+            'Value': name2
+        },
+    ],
+    Period=300,
+    EvaluationPeriods=1,
+    Threshold=80,
+    ComparisonOperator='GreaterThanOrEqualToThreshold'
+)
+
