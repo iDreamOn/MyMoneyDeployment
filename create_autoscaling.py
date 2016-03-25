@@ -95,7 +95,6 @@ mysubscription = client.subscribe(
     Endpoint='sns@uzuro.33mail.com'
 )
 
-
 # put alarm for policy
 client = boto3.client('cloudwatch')
 # alarm for decrease policy
@@ -144,3 +143,13 @@ response = client.put_metric_alarm(
     ComparisonOperator='GreaterThanOrEqualToThreshold'
 )
 
+
+# add notifications to auto scaling group
+client = boto3.client('autoscaling')
+response = client.put_notification_configuration(
+    AutoScalingGroupName=name2,
+    TopicARN=mytopic[u'TopicArn'],
+    NotificationTypes=[
+        'autoscaling:EC2_INSTANCE_LAUNCH','autoscaling:EC2_INSTANCE_LAUNCH_ERROR','autoscaling:EC2_INSTANCE_TERMINATE','autoscaling:EC2_INSTANCE_TERMINATE_ERROR',
+    ]
+)
