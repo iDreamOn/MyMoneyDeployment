@@ -931,9 +931,6 @@
                 "function error_exit\n",
                 "{\n",
                 "  /opt/aws/bin/cfn-signal -e 1 -r \"$1\" '",
-                {
-                  "Ref": "WaitHandle"
-                },
                 "'\n",
                 "  exit 1\n",
                 "}\n",
@@ -941,35 +938,20 @@
                 "cd /home/ec2-user/\n",
                 "aws s3 cp 's3://aws-codedeploy-us-east-1/latest/codedeploy-agent.noarch.rpm' . || error_exit 'Failed to download AWS CodeDeploy Agent.'\n",
                 "yum -y install codedeploy-agent.noarch.rpm || error_exit 'Failed to install AWS CodeDeploy Agent.' \n",
+                
                 "/opt/aws/bin/cfn-init -v ",
-                "         --stack ",
-                {
-                  "Ref": "AWS::StackId"
-                },
+                "         --stack ", { "Ref": "AWS::StackId" },
                 "         --resource WebServer ",
                 "         --configsets full_install ",
-                "         --region ",
-                {
-                  "Ref": "AWS::Region"
-                },
+                "         --region ", { "Ref": "AWS::Region" },
                 " || error_exit 'Failed to run cfn-init.'\n",
                 "\n",
+                
                 "/opt/aws/bin/cfn-signal -e $? ",
-                "         --stack ",
-                {
-                  "Ref": "AWS::StackId"
-                },
+                "         --stack ", { "Ref": "AWS::StackId" },
                 "         --resource WebServer ",
-                "         --region ",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "\n",
-                "# All is well, so signal success.\n",
-                "/opt/aws/bin/cfn-signal -e 0 -r \"AWS CodeDeploy Agent setup complete.\" '",
-                {
-                  "Ref": "WaitHandle"
-                },
+                "         --region ", { "Ref": "AWS::Region" },
+                "\n"
               ]
             ]
           }
@@ -981,33 +963,9 @@
         }
       }
     },
-    "WaitHandle": {
-      "Type": "AWS::CloudFormation::WaitConditionHandle",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "16bb13bb-793a-46dd-99df-eab1e79584af"
-        }
-      }
-    },
-    "WaitCondition": {
-      "Type": "AWS::CloudFormation::WaitCondition",
-      "Properties": {
-        "Count": {
-          "Ref": "InstanceCount"
-        },
-        "Handle": {
-          "Ref": "WaitHandle"
-        },
-        "Timeout": "900"
-      },
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "ea857605-0839-4c62-b643-b0cf0cf4c013"
-        }
-      }
-    },
     "WebServerSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
+      "DependsOn": "WebServer",
       "Properties": {
         "GroupDescription": "Enable HTTP and SSH access",
         "SecurityGroupIngress": [
