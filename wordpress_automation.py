@@ -59,7 +59,7 @@ rds_database = client.create_db_instance(
     VpcSecurityGroupIds=[
         sg2[u'GroupId'],
     ],
-    AvailabilityZone='us-east-1b',
+    AvailabilityZone='us-east-1a',
 
     DBSubnetGroupName='default',
     #PreferredMaintenanceWindow='string',
