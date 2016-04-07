@@ -1,0 +1,1493 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AWS CloudFormation Template: Create the MyMoney app stack using a single EC2 instance with a local MySQL database for storage.",
+  "Parameters": {
+    "NameTagKey": {
+      "Description": "The EC2 tag key that identifies this application name as a target for deployments.",
+      "Type": "String",
+      "Default": "Name",
+      "AllowedPattern": "[\\x20-\\x7E]*",
+      "ConstraintDescription": "Can contain only ASCII characters."
+    },
+    "NameTagValue": {
+      "Description": "The EC2 tag value that identifies this application name as a target for deployments.",
+      "Type": "String",
+      "Default": "MyMoneyApp",
+      "AllowedPattern": "[\\x20-\\x7E]*",
+      "ConstraintDescription": "Can contain only ASCII characters."
+    },
+    "EnvTagKey": {
+      "Description": "The EC2 tag key that identifies this environment as a target for deployments.",
+      "Type": "String",
+      "Default": "Environment",
+      "AllowedPattern": "[\\x20-\\x7E]*",
+      "ConstraintDescription": "Can contain only ASCII characters."
+    },
+    "EnvTagValue": {
+      "Description": "The EC2 tag value that identifies this environment as a target for deployments.",
+      "Type": "String",
+      "Default": "Production",
+      "AllowedPattern": "[\\x20-\\x7E]*",
+      "ConstraintDescription": "Can contain only ASCII characters."
+    },
+    "GitBranch": {
+      "Description": "The git branch to use for deployments.",
+      "Type": "String",
+      "Default": "cloudformation"
+    },
+    "KeyName": {
+      "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+      "Type": "AWS::EC2::KeyPair::KeyName",
+      "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+    },
+    "InstanceCount": {
+      "Description": "Number of Amazon EC2 instances (Must be 1).",
+      "Type": "Number",
+      "Default": "1",
+      "ConstraintDescription": "Must be 1.",
+      "MinValue": "1",
+      "MaxValue": "1"
+    },
+    "DBName": {
+      "Default": "MyMoneyProduction",
+      "Description": "MySQL database name",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "64",
+      "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
+    },
+    "DBUser": {
+      "NoEcho": "true",
+      "Description": "Username for MySQL database access",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "16",
+      "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters."
+    },
+    "DBPassword": {
+      "NoEcho": "true",
+      "Description": "Password MySQL database access",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "41",
+      "AllowedPattern": "[a-zA-Z0-9-]*",
+      "ConstraintDescription": "must contain only alphanumeric characters."
+    },
+    "DBAllocatedStorage": {
+      "Default": "5",
+      "Description": "The size of the database (Gb)",
+      "Type": "Number",
+      "MinValue": "5",
+      "MaxValue": "1024",
+      "ConstraintDescription": "must be between 5 and 1024Gb."
+    },
+    "DBInstanceClass": {
+      "Description": "The database instance type",
+      "Type": "String",
+      "Default": "db.t2.micro",
+      "AllowedValues": [
+        "db.t1.micro",
+        "db.m1.small",
+        "db.m1.medium",
+        "db.m1.large",
+        "db.m1.xlarge",
+        "db.m2.xlarge",
+        "db.m2.2xlarge",
+        "db.m2.4xlarge",
+        "db.m3.medium",
+        "db.m3.large",
+        "db.m3.xlarge",
+        "db.m3.2xlarge",
+        "db.m4.large",
+        "db.m4.xlarge",
+        "db.m4.2xlarge",
+        "db.m4.4xlarge",
+        "db.m4.10xlarge",
+        "db.r3.large",
+        "db.r3.xlarge",
+        "db.r3.2xlarge",
+        "db.r3.4xlarge",
+        "db.r3.8xlarge",
+        "db.m2.xlarge",
+        "db.m2.2xlarge",
+        "db.m2.4xlarge",
+        "db.cr1.8xlarge",
+        "db.t2.micro",
+        "db.t2.small",
+        "db.t2.medium",
+        "db.t2.large"
+      ],
+      "ConstraintDescription": "must select a valid database instance type."
+    },
+    "MultiAZDatabase": {
+      "Default": "false",
+      "Description": "Create a multi-AZ MySQL Amazon RDS database instance",
+      "Type": "String",
+      "AllowedValues": [
+        "false"
+      ],
+      "ConstraintDescription": "must be false."
+    },
+    "InstanceType": {
+      "Description": "WebServer EC2 instance type",
+      "Type": "String",
+      "Default": "t2.micro",
+      "AllowedValues": [
+        "t1.micro",
+        "t2.nano",
+        "t2.micro",
+        "t2.small",
+        "t2.medium",
+        "t2.large",
+        "m1.small",
+        "m1.medium",
+        "m1.large",
+        "m1.xlarge",
+        "m2.xlarge",
+        "m2.2xlarge",
+        "m2.4xlarge",
+        "m3.medium",
+        "m3.large",
+        "m3.xlarge",
+        "m3.2xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
+        "m4.4xlarge",
+        "m4.10xlarge",
+        "c1.medium",
+        "c1.xlarge",
+        "c3.large",
+        "c3.xlarge",
+        "c3.2xlarge",
+        "c3.4xlarge",
+        "c3.8xlarge",
+        "c4.large",
+        "c4.xlarge",
+        "c4.2xlarge",
+        "c4.4xlarge",
+        "c4.8xlarge",
+        "g2.2xlarge",
+        "g2.8xlarge",
+        "r3.large",
+        "r3.xlarge",
+        "r3.2xlarge",
+        "r3.4xlarge",
+        "r3.8xlarge",
+        "i2.xlarge",
+        "i2.2xlarge",
+        "i2.4xlarge",
+        "i2.8xlarge",
+        "d2.xlarge",
+        "d2.2xlarge",
+        "d2.4xlarge",
+        "d2.8xlarge",
+        "hi1.4xlarge",
+        "hs1.8xlarge",
+        "cr1.8xlarge",
+        "cc2.8xlarge",
+        "cg1.4xlarge"
+      ],
+      "ConstraintDescription": "must be a valid EC2 instance type."
+    },
+    "SSHLocation": {
+      "Description": " The IP address range that can be used to SSH to the EC2 instances",
+      "Type": "String",
+      "MinLength": "9",
+      "MaxLength": "18",
+      "Default": "0.0.0.0/0",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+    }
+  },
+  "Mappings": {
+    "AWSInstanceType2Arch": {
+      "t1.micro": {
+        "Arch": "PV64"
+      },
+      "t2.nano": {
+        "Arch": "HVM64"
+      },
+      "t2.micro": {
+        "Arch": "HVM64"
+      },
+      "t2.small": {
+        "Arch": "HVM64"
+      },
+      "t2.medium": {
+        "Arch": "HVM64"
+      },
+      "t2.large": {
+        "Arch": "HVM64"
+      },
+      "m1.small": {
+        "Arch": "PV64"
+      },
+      "m1.medium": {
+        "Arch": "PV64"
+      },
+      "m1.large": {
+        "Arch": "PV64"
+      },
+      "m1.xlarge": {
+        "Arch": "PV64"
+      },
+      "m2.xlarge": {
+        "Arch": "PV64"
+      },
+      "m2.2xlarge": {
+        "Arch": "PV64"
+      },
+      "m2.4xlarge": {
+        "Arch": "PV64"
+      },
+      "m3.medium": {
+        "Arch": "HVM64"
+      },
+      "m3.large": {
+        "Arch": "HVM64"
+      },
+      "m3.xlarge": {
+        "Arch": "HVM64"
+      },
+      "m3.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "m4.large": {
+        "Arch": "HVM64"
+      },
+      "m4.xlarge": {
+        "Arch": "HVM64"
+      },
+      "m4.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "m4.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "m4.10xlarge": {
+        "Arch": "HVM64"
+      },
+      "c1.medium": {
+        "Arch": "PV64"
+      },
+      "c1.xlarge": {
+        "Arch": "PV64"
+      },
+      "c3.large": {
+        "Arch": "HVM64"
+      },
+      "c3.xlarge": {
+        "Arch": "HVM64"
+      },
+      "c3.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "c3.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "c3.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "c4.large": {
+        "Arch": "HVM64"
+      },
+      "c4.xlarge": {
+        "Arch": "HVM64"
+      },
+      "c4.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "c4.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "c4.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "g2.2xlarge": {
+        "Arch": "HVMG2"
+      },
+      "g2.8xlarge": {
+        "Arch": "HVMG2"
+      },
+      "r3.large": {
+        "Arch": "HVM64"
+      },
+      "r3.xlarge": {
+        "Arch": "HVM64"
+      },
+      "r3.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "r3.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "r3.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "i2.xlarge": {
+        "Arch": "HVM64"
+      },
+      "i2.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "i2.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "i2.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "d2.xlarge": {
+        "Arch": "HVM64"
+      },
+      "d2.2xlarge": {
+        "Arch": "HVM64"
+      },
+      "d2.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "d2.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "hi1.4xlarge": {
+        "Arch": "HVM64"
+      },
+      "hs1.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "cr1.8xlarge": {
+        "Arch": "HVM64"
+      },
+      "cc2.8xlarge": {
+        "Arch": "HVM64"
+      }
+    },
+    "AWSInstanceType2NATArch": {
+      "t1.micro": {
+        "Arch": "NATPV64"
+      },
+      "t2.nano": {
+        "Arch": "NATHVM64"
+      },
+      "t2.micro": {
+        "Arch": "NATHVM64"
+      },
+      "t2.small": {
+        "Arch": "NATHVM64"
+      },
+      "t2.medium": {
+        "Arch": "NATHVM64"
+      },
+      "t2.large": {
+        "Arch": "NATHVM64"
+      },
+      "m1.small": {
+        "Arch": "NATPV64"
+      },
+      "m1.medium": {
+        "Arch": "NATPV64"
+      },
+      "m1.large": {
+        "Arch": "NATPV64"
+      },
+      "m1.xlarge": {
+        "Arch": "NATPV64"
+      },
+      "m2.xlarge": {
+        "Arch": "NATPV64"
+      },
+      "m2.2xlarge": {
+        "Arch": "NATPV64"
+      },
+      "m2.4xlarge": {
+        "Arch": "NATPV64"
+      },
+      "m3.medium": {
+        "Arch": "NATHVM64"
+      },
+      "m3.large": {
+        "Arch": "NATHVM64"
+      },
+      "m3.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "m3.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "m4.large": {
+        "Arch": "NATHVM64"
+      },
+      "m4.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "m4.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "m4.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "m4.10xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c1.medium": {
+        "Arch": "NATPV64"
+      },
+      "c1.xlarge": {
+        "Arch": "NATPV64"
+      },
+      "c3.large": {
+        "Arch": "NATHVM64"
+      },
+      "c3.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c3.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c3.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c3.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c4.large": {
+        "Arch": "NATHVM64"
+      },
+      "c4.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c4.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c4.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "c4.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "g2.2xlarge": {
+        "Arch": "NATHVMG2"
+      },
+      "g2.8xlarge": {
+        "Arch": "NATHVMG2"
+      },
+      "r3.large": {
+        "Arch": "NATHVM64"
+      },
+      "r3.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "r3.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "r3.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "r3.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "i2.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "i2.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "i2.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "i2.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "d2.xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "d2.2xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "d2.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "d2.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "hi1.4xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "hs1.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "cr1.8xlarge": {
+        "Arch": "NATHVM64"
+      },
+      "cc2.8xlarge": {
+        "Arch": "NATHVM64"
+      }
+    },
+    "AWSRegionArch2AMI": {
+      "us-east-1": {
+        "PV64": "ami-22111148",
+        "HVM64": "ami-08111162",
+        "HVMG2": "ami-ebcec381"
+      },
+      "us-west-2": {
+        "PV64": "ami-792bc219",
+        "HVM64": "ami-c229c0a2",
+        "HVMG2": "ami-0f28c06f"
+      },
+      "us-west-1": {
+        "PV64": "ami-0e087a6e",
+        "HVM64": "ami-1b0f7d7b",
+        "HVMG2": "ami-ab9defcb"
+      },
+      "eu-west-1": {
+        "PV64": "ami-a5368cd6",
+        "HVM64": "ami-31328842",
+        "HVMG2": "ami-d1d652a2"
+      },
+      "eu-central-1": {
+        "PV64": "ami-2bde3944",
+        "HVM64": "ami-e2df388d",
+        "HVMG2": "ami-5240a73d"
+      },
+      "ap-northeast-1": {
+        "PV64": "ami-37020959",
+        "HVM64": "ami-f80e0596",
+        "HVMG2": "ami-34a9a35a"
+      },
+      "ap-northeast-2": {
+        "PV64": "NOT_SUPPORTED",
+        "HVM64": "ami-6598510b",
+        "HVMG2": "NOT_SUPPORTED"
+      },
+      "ap-southeast-1": {
+        "PV64": "ami-ff0cc79c",
+        "HVM64": "ami-e90dc68a",
+        "HVMG2": "ami-6f6ca70c"
+      },
+      "ap-southeast-2": {
+        "PV64": "ami-f5210196",
+        "HVM64": "ami-f2210191",
+        "HVMG2": "ami-88c1e1eb"
+      },
+      "sa-east-1": {
+        "PV64": "ami-661e930a",
+        "HVM64": "ami-1e159872",
+        "HVMG2": "NOT_SUPPORTED"
+      },
+      "cn-north-1": {
+        "PV64": "ami-08ef2465",
+        "HVM64": "ami-49e22924",
+        "HVMG2": "NOT_SUPPORTED"
+      }
+    }
+  },
+  "Conditions": {
+    "Is-EC2-VPC": {
+      "Fn::Or": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::Region"
+            },
+            "eu-central-1"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::Region"
+            },
+            "cn-north-1"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::Region"
+            },
+            "ap-northeast-2"
+          ]
+        }
+      ]
+    },
+    "Is-EC2-Classic": {
+      "Fn::Not": [
+        {
+          "Condition": "Is-EC2-VPC"
+        }
+      ]
+    }
+  },
+  "Resources": {
+    "WebServer": {
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "full_install": [
+              "install_cfn",
+              "install_git",
+              "install_mysql",
+              "install_ruby",
+              "install_codedeploy",
+              "install_application"
+            ]
+          },
+          "install_cfn": {
+            "files": {
+              "/etc/cfn/cfn-hup.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[main]\n",
+                      "stack=",
+                      {
+                        "Ref": "AWS::StackId"
+                      },
+                      "\n",
+                      "region=",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode": "000400",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[cfn-auto-reloader-hook]\n",
+                      "triggers=post.update\n",
+                      "path=Resources.WebServer.Metadata.AWS::CloudFormation::Init\n",
+                      "action=/opt/aws/bin/cfn-init -v ",
+                      "         --stack ",
+                      {
+                        "Ref": "AWS::StackName"
+                      },
+                      "         --resource WebServer ",
+                      "         --configsets full_install ",
+                      "         --region ",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n",
+                      "runas=root\n"
+                    ]
+                  ]
+                }
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": [
+                    "/etc/cfn/cfn-hup.conf",
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                  ]
+                }
+              }
+            }
+          },
+          "install_mysql": {
+            "packages": {
+              "yum": {
+                "mysql": [],
+                "mysql-server": [],
+                "mysql-devel": [],
+                "mysql-libs": []
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "mysqld": {
+                  "enabled": "true",
+                  "ensureRunning": "true"
+                }
+              }
+            }
+          },
+          "configure_mysql": {
+            "commands": {
+              "01_update_mysql_tzinfo": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u ", { "Ref": "DBUser" }, " --password='", { "Ref": "DBPassword" }, "' mysql"
+                    ]
+                  ]
+                }
+              }
+            }
+          },
+          "install_ruby": {
+            "packages": {
+              "yum": {
+                "gcc-c++": [],
+                "make": [],
+                "ruby-devel": [],
+                "rubygems": [],
+                "rubygem-io-console": [],
+                "sqlite-devel": [],
+                "patch": []
+              }
+            },
+            "commands": {
+              "01_install_nodejs": {
+                "command": "yum -y install nodejs npm --enablerepo=epel"
+              },
+              "02_update_gems": {
+                "command": "gem update --system"
+              },
+              "03_reload_nokogiri": {
+                "command": "gem install --no-ri --no-rdoc nokogiri"
+              }
+            }
+          },
+          "install_git": {
+            "packages": {
+              "yum": {
+                "git": []
+              }
+            }
+          },
+          "install_codedeploy": {
+            "services": {
+              "sysvint": {
+                "codedeploy-agent": {
+                  "enabled": "true",
+                  "ensureRunning": "true"
+                }
+              }
+            }
+          },
+          "install_application": {
+            "packages": {
+              "rubygems": {
+                "rails": []
+              }
+            },
+            "files": {
+              "/tmp/install_application": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash -e\n",
+                      "export HOME=/home/ec2-user\n",
+                      "export PATH=$PATH:/usr/local/bin\n",
+                      "export DBName=", { "Ref": "DBName" }, "\n",
+                      "export DBUser=", { "Ref": "DBUser" }, "\n",
+                      "export DBPassword=", { "Ref": "DBPassword" }, "\n",
+                      "export DBHost=", { "Fn::GetAtt": [ "MyMoneyDB", "Endpoint.Address" ] }, "\n",
+                      "export DBPort=", { "Fn::GetAtt": [ "MyMoneyDB", "Endpoint.Port" ] }, "\n",
+                      "export SECRET_KEY_BASE=16f5cf3ad541a71d40b9e3415213c4b26377f53e1d99697c69743b7a20aa5ea68e8aad0be80aa95c0e7b92a0bbfe439bdb075dd342ff096951a2901a9d1ff13f\n",
+                      "cd /home/ec2-user\n",
+                      "# Kill the rails server if it is running to allow update\n",
+                      "if pgrep ruby &> /dev/null ; then pkill -TERM ruby ; fi\n",
+                      "git clone -b ", { "Ref": "GitBranch" },
+                      " https://github.com/iDreamOn/mymoney.git\n",
+                      "cd /home/ec2-user/mymoney\n",
+                      "bundle install --without development test\n",
+                      "bundle update\n",
+                      "RAILS_ENV=production rake db:create db:migrate\n"
+                    ]
+                  ]
+                },
+                "mode": "000500",
+                "owner": "root",
+                "group": "root"
+              },
+              "/home/ec2-user/start-application": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "#!/bin/bash -e\n",
+                      "export HOME=/home/ec2-user\n",
+                      "export PATH=$PATH:/usr/local/bin\n",
+                      "export DBName=", { "Ref": "DBName" }, "\n",
+                      "export DBUser=", { "Ref": "DBUser" }, "\n",
+                      "export DBPassword=", { "Ref": "DBPassword" }, "\n",
+                      "export DBHost=", { "Fn::GetAtt": [ "MyMoneyDB", "Endpoint.Address" ] }, "\n",
+                      "export DBPort=", { "Fn::GetAtt": [ "MyMoneyDB", "Endpoint.Port" ] }, "\n",
+                      "export SECRET_KEY_BASE=16f5cf3ad541a71d40b9e3415213c4b26377f53e1d99697c69743b7a20aa5ea68e8aad0be80aa95c0e7b92a0bbfe439bdb075dd342ff096951a2901a9d1ff13f\n",
+                      "cd /home/ec2-user/mymoney\n",
+                      "# Startup the application\n",
+                      "RAILS_ENV=production rails server --binding 0.0.0.0 -p 80 -d\n"
+                    ]
+                  ]
+                },
+                "mode": "000500",
+                "owner": "root",
+                "group": "root"
+              }
+            },
+            "commands": {
+              "01_install_application": {
+                "command": "/tmp/install_application > /var/log/install_application.log"
+              },
+              "02_configure_reboot": {
+                "command": "echo /home/ec2-user/start-application >> /etc/rc.local"
+              },
+              "03_start_application": {
+                "command": "/home/ec2-user/start-application"
+              },
+              "04_cleanup": {
+                "command": "rm /tmp/install_application"
+              }
+            }
+          }
+        },
+        "AWS::CloudFormation::Designer": {
+          "id": "e5907eb5-c9f0-4b67-b64d-1b1f5eb880f4"
+        }
+      },
+      "Properties": {
+        "ImageId": {
+          "Fn::FindInMap": [
+            "AWSRegionArch2AMI",
+            {
+              "Ref": "AWS::Region"
+            },
+            {
+              "Fn::FindInMap": [
+                "AWSInstanceType2Arch",
+                {
+                  "Ref": "InstanceType"
+                },
+                "Arch"
+              ]
+            }
+          ]
+        },
+        "InstanceType": {
+          "Ref": "InstanceType"
+        },
+        "IamInstanceProfile": {
+          "Ref": "InstanceRoleInstanceProfile"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "WebServerSecurityGroup"
+          }
+        ],
+        "KeyName": {
+          "Ref": "KeyName"
+        },
+        "Tags": [
+          {
+            "Key": {
+              "Ref": "EnvTagKey"
+            },
+            "Value": {
+              "Ref": "EnvTagValue"
+            }
+          },
+          {
+            "Key": {
+              "Ref": "NameTagKey"
+            },
+            "Value": {
+              "Ref": "NameTagValue"
+            }
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "yum update -y aws-cfn-bootstrap\n",
+                "yum install -y aws-cli\n",
+                "# Helper function.\n",
+                "function error_exit\n",
+                "{\n",
+                "  /opt/aws/bin/cfn-signal -e 1 -r \"$1\" '",
+                "'\n",
+                "  exit 1\n",
+                "}\n",
+                "# Install the AWS CodeDeploy Agent.\n",
+                "cd /home/ec2-user/\n",
+                "aws s3 cp 's3://aws-codedeploy-us-east-1/latest/codedeploy-agent.noarch.rpm' . || error_exit 'Failed to download AWS CodeDeploy Agent.'\n",
+                "yum -y install codedeploy-agent.noarch.rpm || error_exit 'Failed to install AWS CodeDeploy Agent.' \n",
+                "/opt/aws/bin/cfn-init -v ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackId"
+                },
+                "         --resource WebServer ",
+                "         --configsets full_install ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                " || error_exit 'Failed to run cfn-init.'\n",
+                "\n",
+                "/opt/aws/bin/cfn-signal -e $? ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackId"
+                },
+                "         --resource WebServer ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      },
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Timeout": "PT30M"
+        }
+      }
+    },
+    "CodeDeployTrustRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Sid": "1",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "codedeploy.us-east-1.amazonaws.com",
+                  "codedeploy.us-west-2.amazonaws.com"
+                ]
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Path": "/"
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "cb37a74b-cf6c-4b94-8e09-f00b801eeb80"
+        }
+      }
+    },
+    "CodeDeployRolePolicies": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "CodeDeployPolicy",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Resource": [
+                "*"
+              ],
+              "Action": [
+                "ec2:Describe*"
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Resource": [
+                "*"
+              ],
+              "Action": [
+                "autoscaling:CompleteLifecycleAction",
+                "autoscaling:DeleteLifecycleHook",
+                "autoscaling:DescribeLifecycleHooks",
+                "autoscaling:DescribeAutoScalingGroups",
+                "autoscaling:PutLifecycleHook",
+                "autoscaling:RecordLifecycleActionHeartbeat"
+              ]
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "CodeDeployTrustRole"
+          }
+        ]
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "074d9baf-2427-41e7-bcd8-610aa938cd46"
+        }
+      }
+    },
+    "InstanceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/"
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "608945e6-9c40-4435-8cef-c5e2ea9a63fe"
+        }
+      }
+    },
+    "InstanceRolePolicies": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "InstanceRole",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "autoscaling:Describe*",
+                "cloudformation:Describe*",
+                "cloudformation:GetTemplate",
+                "s3:Get*"
+              ],
+              "Resource": "*"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "InstanceRole"
+          }
+        ]
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "72b038fe-eaee-46be-b220-c0dc3cd6bcf9"
+        }
+      }
+    },
+    "InstanceRoleInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [
+          {
+            "Ref": "InstanceRole"
+          }
+        ]
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "de2368b8-5f42-43da-9d5f-f0a7dbfafcdb"
+        }
+      }
+    },
+    "MyMoneyDB": {
+      "Type": "AWS::RDS::DBInstance",
+      "Properties": {
+        "Engine": "MySQL",
+        "DBName": {
+          "Ref": "DBName"
+        },
+        "MasterUsername": {
+          "Ref": "DBUser"
+        },
+        "MasterUserPassword": {
+          "Ref": "DBPassword"
+        },
+        "DBInstanceClass": {
+          "Ref": "DBInstanceClass"
+        },
+        "MultiAZ": {
+          "Ref": "MultiAZDatabase"
+        },
+        "AllocatedStorage": {
+          "Ref": "DBAllocatedStorage"
+        },
+        "VPCSecurityGroups": {
+          "Fn::If": [
+            "Is-EC2-VPC",
+            [
+              {
+                "Fn::GetAtt": [
+                  "DBEC2SecurityGroup",
+                  "GroupId"
+                ]
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "DBSecurityGroups": {
+          "Fn::If": [
+            "Is-EC2-Classic",
+            [
+              {
+                "Ref": "DBSecurityGroup"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "9da800b0-e3d0-408b-a52a-d84a7f534d7e"
+        }
+      }
+    },
+    "WebServerSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable HTTP and SSH access",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": {
+              "Ref": "SSHLocation"
+            }
+          }
+        ]
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "bc1d4200-fec7-4955-93e2-e8122735ebc7"
+        }
+      }
+    },
+    "DBSecurityGroup": {
+      "Type": "AWS::RDS::DBSecurityGroup",
+      "Condition": "Is-EC2-Classic",
+      "Properties": {
+        "DBSecurityGroupIngress": {
+          "EC2SecurityGroupName": {
+            "Ref": "WebServerSecurityGroup"
+          }
+        },
+        "GroupDescription": "database access"
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "bd8f65b2-2135-4de8-9a7b-7a1281a99633"
+        }
+      }
+    },
+    "DBEC2SecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Condition": "Is-EC2-VPC",
+      "Properties": {
+        "GroupDescription": "Open database for access",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "3306",
+            "ToPort": "3306",
+            "SourceSecurityGroupName": {
+              "Ref": "WebServerSecurityGroup"
+            }
+          }
+        ]
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "4bb251d6-5805-4ae2-9c3f-88dbcb008a01"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "CodeDeployTrustRoleARN": {
+      "Value": {
+        "Fn::GetAtt": [
+          "CodeDeployTrustRole",
+          "Arn"
+        ]
+      }
+    },
+    "WebsiteURL": {
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "http://",
+            {
+              "Fn::GetAtt": [
+                "WebServer",
+                "PublicDnsName"
+              ]
+            },
+            "/home"
+          ]
+        ]
+      },
+      "Description": "URL for newly created Rails application"
+    }
+  },
+  "Metadata": {
+    "AWS::CloudFormation::Designer": {
+      "bc1d4200-fec7-4955-93e2-e8122735ebc7": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": 310,
+          "y": 100
+        },
+        "z": 1,
+        "embeds": []
+      },
+      "e5907eb5-c9f0-4b67-b64d-1b1f5eb880f4": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": 200,
+          "y": 100
+        },
+        "z": 1,
+        "embeds": [],
+        "ismemberof": [
+          "bc1d4200-fec7-4955-93e2-e8122735ebc7"
+        ],
+        "isrelatedto": [
+          "3e5f1e98-a9e4-4bec-88ca-7ff906323341",
+          "de2368b8-5f42-43da-9d5f-f0a7dbfafcdb",
+          "16bb13bb-793a-46dd-99df-eab1e79584af"
+        ]
+      },
+      "cf137f33-bcef-4543-b04c-8328c7a15478": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": -6.05893947171806,
+          "y": -31.178144964955706
+        },
+        "z": 0,
+        "embeds": [],
+        "isassociatedwith": [
+          "1eb951d1-00d4-477b-88c8-75cc5c8c5baa"
+        ]
+      },
+      "1eb951d1-00d4-477b-88c8-75cc5c8c5baa": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": -198.98528393756575,
+          "y": 26.379990953032006
+        },
+        "z": 0,
+        "embeds": []
+      },
+      "3e5f1e98-a9e4-4bec-88ca-7ff906323341": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": 20,
+          "y": 90
+        },
+        "z": 0,
+        "embeds": [],
+        "isassociatedwith": [
+          "1eb951d1-00d4-477b-88c8-75cc5c8c5baa"
+        ]
+      },
+      "d64ad5bc-35db-4b84-be6b-809f802565b6": {
+        "source": {
+          "id": "cf137f33-bcef-4543-b04c-8328c7a15478"
+        },
+        "target": {
+          "id": "1eb951d1-00d4-477b-88c8-75cc5c8c5baa"
+        },
+        "z": 11
+      },
+      "60ede4ea-2449-428b-aa7e-539d750e3796": {
+        "source": {
+          "id": "3e5f1e98-a9e4-4bec-88ca-7ff906323341"
+        },
+        "target": {
+          "id": "1eb951d1-00d4-477b-88c8-75cc5c8c5baa"
+        },
+        "z": 12
+      },
+      "608945e6-9c40-4435-8cef-c5e2ea9a63fe": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": -20,
+          "y": 100
+        },
+        "z": 1,
+        "embeds": []
+      },
+      "de2368b8-5f42-43da-9d5f-f0a7dbfafcdb": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": 90,
+          "y": 100
+        },
+        "z": 1,
+        "embeds": [],
+        "isassociatedwith": [
+          "608945e6-9c40-4435-8cef-c5e2ea9a63fe"
+        ]
+      },
+      "72b038fe-eaee-46be-b220-c0dc3cd6bcf9": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": -140,
+          "y": 100
+        },
+        "z": 1,
+        "embeds": [],
+        "isassociatedwith": [
+          "608945e6-9c40-4435-8cef-c5e2ea9a63fe"
+        ]
+      },
+      "cb37a74b-cf6c-4b94-8e09-f00b801eeb80": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": -20,
+          "y": 180
+        },
+        "z": 1,
+        "embeds": []
+      },
+      "074d9baf-2427-41e7-bcd8-610aa938cd46": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": -140,
+          "y": 180
+        },
+        "z": 1,
+        "embeds": [],
+        "isassociatedwith": [
+          "cb37a74b-cf6c-4b94-8e09-f00b801eeb80"
+        ]
+      },
+      "16bb13bb-793a-46dd-99df-eab1e79584af": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": 300,
+          "y": 0
+        },
+        "z": 1,
+        "embeds": []
+      },
+      "ea857605-0839-4c62-b643-b0cf0cf4c013": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": 430,
+          "y": 0
+        },
+        "z": 1,
+        "embeds": [],
+        "references": [
+          "16bb13bb-793a-46dd-99df-eab1e79584af"
+        ]
+      },
+      "9da800b0-e3d0-408b-a52a-d84a7f534d7e": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": 500,
+          "y": 240
+        },
+        "z": 0,
+        "embeds": [],
+        "isrelatedto": [
+          "4bb251d6-5805-4ae2-9c3f-88dbcb008a01",
+          "bd8f65b2-2135-4de8-9a7b-7a1281a99633"
+        ]
+      },
+      "bd8f65b2-2135-4de8-9a7b-7a1281a99633": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": 310,
+          "y": 240
+        },
+        "z": 0,
+        "embeds": [],
+        "isrelatedto": [
+          "bc1d4200-fec7-4955-93e2-e8122735ebc7"
+        ]
+      },
+      "4bb251d6-5805-4ae2-9c3f-88dbcb008a01": {
+        "size": {
+          "width": 60,
+          "height": 60
+        },
+        "position": {
+          "x": 500,
+          "y": 100
+        },
+        "z": 0,
+        "embeds": [],
+        "isrelatedto": [
+          "bc1d4200-fec7-4955-93e2-e8122735ebc7"
+        ]
+      }
+    }
+  }
+}
