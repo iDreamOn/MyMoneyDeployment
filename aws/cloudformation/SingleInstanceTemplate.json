@@ -72,7 +72,7 @@
       "Type": "String",
       "MinLength": "1",
       "MaxLength": "41",
-      "AllowedPattern": "[a-zA-Z0-9]*",
+      "AllowedPattern": "[a-zA-Z0-9-]*",
       "ConstraintDescription": "must contain only alphanumeric characters."
     },
     "DBRootPassword": {
@@ -81,7 +81,7 @@
       "Type": "String",
       "MinLength": "1",
       "MaxLength": "41",
-      "AllowedPattern": "[a-zA-Z0-9]*",
+      "AllowedPattern": "[a-zA-Z0-9-]*",
       "ConstraintDescription": "must contain only alphanumeric characters."
     },
     "InstanceType": {
@@ -626,6 +626,39 @@
                 "mysql-libs": []
               }
             },
+            "files": {
+              "/tmp/setup.mysql": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "CREATE USER '",
+                      {
+                        "Ref": "DBUser"
+                      },
+                      "'@'localhost' IDENTIFIED BY '",
+                      {
+                        "Ref": "DBPassword"
+                      },
+                      "';\n",
+                      "GRANT ALL ON ",
+                      {
+                        "Ref": "DBName"
+                      },
+                      ".* TO '",
+                      {
+                        "Ref": "DBUser"
+                      },
+                      "'@'localhost';\n",
+                      "FLUSH PRIVILEGES;\n"
+                    ]
+                  ]
+                },
+                "mode": "000400",
+                "owner": "root",
+                "group": "root"
+              }
+            },
             "services": {
               "sysvinit": {
                 "mysqld": {
@@ -680,6 +713,43 @@
                     ]
                   ]
                 }
+              },
+              "03_create_database_user": {
+                "command": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "mysql -u root --password='",
+                      {
+                        "Ref": "DBRootPassword"
+                      },
+                      "' < /tmp/setup.mysql"
+                    ]
+                  ]
+                },
+                "test": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "$(mysql ",
+                      {
+                        "Ref": "DBName"
+                      },
+                      " -u ",
+                      {
+                        "Ref": "DBUser"
+                      },
+                      " --password='",
+                      {
+                        "Ref": "DBPassword"
+                      },
+                      "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"
+                    ]
+                  ]
+                }
+              },
+              "04_cleanup": {
+                "command": "rm /tmp/setup.mysql"
               }
             }
           },
@@ -766,6 +836,10 @@
                       "#!/bin/bash -e\n",
                       "export HOME=/home/ec2-user\n",
                       "export PATH=$PATH:/usr/local/bin\n",
+                      "export DBName=",{ "Ref": "DBName" }, "\n",
+                      "export DBUser=",{ "Ref": "DBUser" }, "\n",
+					  "export DBPassword=",{ "Ref": "DBPassword" }, "\n",
+					  "export SECRET_KEY_BASE=16f5cf3ad541a71d40b9e3415213c4b26377f53e1d99697c69743b7a20aa5ea68e8aad0be80aa95c0e7b92a0bbfe439bdb075dd342ff096951a2901a9d1ff13f\n",
                       "cd /home/ec2-user/mymoney\n",
                       "# Startup the application\n",
                       "RAILS_ENV=production rails server --binding 0.0.0.0 -p 80 -d\n"
