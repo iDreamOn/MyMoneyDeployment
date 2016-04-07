@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AWS CloudFormation Sample Template Rails_Single_Instance: Create a Ruby on Rails stack using a single EC2 instance with a local MySQL database for storage. This template demonstrates using the AWS CloudFormation bootstrap scripts to install the packages and files necessary to deploy a Rails application. This example creates a simple hello world application from the template. **WARNING** This template creates an Amazon EC2 instance. You will be billed for the AWS resources used if you create a stack from this template.",
+  "Description": "AWS CloudFormation Template: Create the MyMoney app stack using a single EC2 instance with a local MySQL database for storage.",
   "Parameters": {
     "NameTagKey": {
       "Description": "The EC2 tag key that identifies this application name as a target for deployments.",
@@ -29,6 +29,11 @@
       "Default": "Production",
       "AllowedPattern": "[\\x20-\\x7E]*",
       "ConstraintDescription": "Can contain only ASCII characters."
+    },
+    "GitBranch": {
+      "Description": "The git branch to use for deployments.",
+      "Type": "String",
+      "Default": "cloudformation"
     },
     "KeyName": {
       "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances",
@@ -540,6 +545,7 @@
           "configSets": {
             "full_install": [
               "install_cfn",
+              "install_git",
               "install_mysql",
               "configure_mysql",
               "install_ruby",
@@ -620,39 +626,6 @@
                 "mysql-libs": []
               }
             },
-            "files": {
-              "/tmp/setup.mysql": {
-                "content": {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "CREATE USER '",
-                      {
-                        "Ref": "DBUser"
-                      },
-                      "'@'localhost' IDENTIFIED BY '",
-                      {
-                        "Ref": "DBPassword"
-                      },
-                      "';\n",
-                      "GRANT ALL ON ",
-                      {
-                        "Ref": "DBName"
-                      },
-                      ".* TO '",
-                      {
-                        "Ref": "DBUser"
-                      },
-                      "'@'localhost';\n",
-                      "FLUSH PRIVILEGES;\n"
-                    ]
-                  ]
-                },
-                "mode": "000400",
-                "owner": "root",
-                "group": "root"
-              }
-            },
             "services": {
               "sysvinit": {
                 "mysqld": {
@@ -694,38 +667,19 @@
                   ]
                 }
               },
-              "02_create_database": {
+              "02_update_mysql_tzinfo": {
                 "command": {
                   "Fn::Join": [
                     "",
                     [
-                      "mysql -u root --password='",
+                      "mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root --password='",
                       {
                         "Ref": "DBRootPassword"
                       },
-                      "' < /tmp/setup.mysql"
-                    ]
-                  ]
-                },
-                "test": {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "$(mysql ",
-                      {
-                        "Ref": "DBName"
-                      },
-                      " -u root --password='",
-                      {
-                        "Ref": "DBRootPassword"
-                      },
-                      "' >/dev/null 2>&1 </dev/null); (( $? != 0 ))"
+                      "' mysql"
                     ]
                   ]
                 }
-              },
-              "03_cleanup": {
-                "command": "rm /tmp/setup.mysql"
               }
             }
           },
@@ -737,15 +691,26 @@
                 "ruby-devel": [],
                 "rubygems": [],
                 "rubygem-io-console": [],
+                "sqlite-devel": [],
                 "patch": []
               }
             },
             "commands": {
-              "01_update_gems": {
+              "01_install_nodejs": {
+                "command": "yum -y install nodejs npm --enablerepo=epel"
+              },
+              "02_update_gems": {
                 "command": "gem update --system"
               },
-              "02_reload_nokogiri": {
+              "03_reload_nokogiri": {
                 "command": "gem install --no-ri --no-rdoc nokogiri"
+              }
+            }
+          },
+          "install_git": {
+            "packages": {
+              "yum": {
+                "git": []
               }
             }
           },
@@ -766,39 +731,6 @@
               }
             },
             "files": {
-              "/tmp/database.yml": {
-                "content": {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "development:\n",
-                      "  adapter: mysql2\n",
-                      "  encoding: utf8\n",
-                      "  reconnect: false\n",
-                      "  pool: 5\n",
-                      "  database: ",
-                      {
-                        "Ref": "DBName"
-                      },
-                      "\n",
-                      "  username: ",
-                      {
-                        "Ref": "DBUser"
-                      },
-                      "\n",
-                      "  password: ",
-                      {
-                        "Ref": "DBPassword"
-                      },
-                      "\n",
-                      "  socket: /var/lib/mysql/mysql.sock\n"
-                    ]
-                  ]
-                },
-                "mode": "000400",
-                "owner": "root",
-                "group": "root"
-              },
               "/tmp/install_application": {
                 "content": {
                   "Fn::Join": [
@@ -807,22 +739,18 @@
                       "#!/bin/bash -e\n",
                       "export HOME=/home/ec2-user\n",
                       "export PATH=$PATH:/usr/local/bin\n",
+                      "export DBName=",{ "Ref": "DBName" }, "\n",
+                      "export DBUser=",{ "Ref": "DBUser" }, "\n",
+					  "export DBPassword=",{ "Ref": "DBPassword" }, "\n",
+					  "export SECRET_KEY_BASE=16f5cf3ad541a71d40b9e3415213c4b26377f53e1d99697c69743b7a20aa5ea68e8aad0be80aa95c0e7b92a0bbfe439bdb075dd342ff096951a2901a9d1ff13f\n",
                       "cd /home/ec2-user\n",
                       "# Kill the rails server if it is running to allow update\n",
                       "if pgrep ruby &> /dev/null ; then pkill -TERM ruby ; fi\n",
-                      "# This sample template creates a new application inline\n",
-                      "# Typically you would use files and/or sources to download\n",
-                      "# your application package and perform any configuration here.\n",
-                      "# Create a new application, with therubyracer javascript library\n",
-                      "rails new sample -d mysql --skip-spring --skip-bundle --force\n",
-                      "cd /home/ec2-user/sample\n",
-                      "sed -i 's/^# \\(.*therubyracer.*$\\)/\\1/' Gemfile\n",
-                      "bundle install\n",
-                      "# Create a sample scoffold\n",
-                      "rails generate scaffold Note title:string body:text --force\n",
-                      "# Configure the database connection\n",
-                      "mv /tmp/database.yml config\n",
-                      "rake db:create db:migrate\n"
+                      "git clone -b ", { "Ref": "GitBranch" }," https://github.com/iDreamOn/mymoney.git\n",
+                      "cd /home/ec2-user/mymoney\n",
+                      "bundle install --without development test\n",
+                      "bundle update\n",
+                      "RAILS_ENV=production rake db:create db:migrate\n"
                     ]
                   ]
                 },
@@ -838,9 +766,9 @@
                       "#!/bin/bash -e\n",
                       "export HOME=/home/ec2-user\n",
                       "export PATH=$PATH:/usr/local/bin\n",
-                      "cd /home/ec2-user/sample\n",
+                      "cd /home/ec2-user/mymoney\n",
                       "# Startup the application\n",
-                      "rails server --binding 0.0.0.0 -p 80 -d\n"
+                      "RAILS_ENV=production rails server --binding 0.0.0.0 -p 80 -d\n"
                     ]
                   ]
                 },
@@ -938,19 +866,29 @@
                 "cd /home/ec2-user/\n",
                 "aws s3 cp 's3://aws-codedeploy-us-east-1/latest/codedeploy-agent.noarch.rpm' . || error_exit 'Failed to download AWS CodeDeploy Agent.'\n",
                 "yum -y install codedeploy-agent.noarch.rpm || error_exit 'Failed to install AWS CodeDeploy Agent.' \n",
-                
                 "/opt/aws/bin/cfn-init -v ",
-                "         --stack ", { "Ref": "AWS::StackId" },
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackId"
+                },
                 "         --resource WebServer ",
                 "         --configsets full_install ",
-                "         --region ", { "Ref": "AWS::Region" },
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
                 " || error_exit 'Failed to run cfn-init.'\n",
                 "\n",
-                
                 "/opt/aws/bin/cfn-signal -e $? ",
-                "         --stack ", { "Ref": "AWS::StackId" },
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackId"
+                },
                 "         --resource WebServer ",
-                "         --region ", { "Ref": "AWS::Region" },
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
                 "\n"
               ]
             ]
@@ -965,7 +903,6 @@
     },
     "WebServerSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
-      "DependsOn": "WebServer",
       "Properties": {
         "GroupDescription": "Enable HTTP and SSH access",
         "SecurityGroupIngress": [
@@ -1154,7 +1091,7 @@
                 "PublicDnsName"
               ]
             },
-            "/notes"
+            "/home"
           ]
         ]
       },
@@ -1169,8 +1106,8 @@
           "height": 60
         },
         "position": {
-          "x": 300,
-          "y": 90
+          "x": 310,
+          "y": 100
         },
         "z": 1,
         "embeds": []
@@ -1181,8 +1118,8 @@
           "height": 60
         },
         "position": {
-          "x": 180,
-          "y": 90
+          "x": 200,
+          "y": 100
         },
         "z": 1,
         "embeds": [],
@@ -1261,8 +1198,8 @@
           "height": 60
         },
         "position": {
-          "x": 440,
-          "y": 210
+          "x": -20,
+          "y": 100
         },
         "z": 1,
         "embeds": []
@@ -1273,8 +1210,8 @@
           "height": 60
         },
         "position": {
-          "x": 330,
-          "y": 220
+          "x": 90,
+          "y": 100
         },
         "z": 1,
         "embeds": [],
@@ -1288,8 +1225,8 @@
           "height": 60
         },
         "position": {
-          "x": 570,
-          "y": 210
+          "x": -140,
+          "y": 100
         },
         "z": 1,
         "embeds": [],
@@ -1303,8 +1240,8 @@
           "height": 60
         },
         "position": {
-          "x": -40,
-          "y": 230
+          "x": -20,
+          "y": 180
         },
         "z": 1,
         "embeds": []
@@ -1315,8 +1252,8 @@
           "height": 60
         },
         "position": {
-          "x": -40,
-          "y": 350
+          "x": -140,
+          "y": 180
         },
         "z": 1,
         "embeds": [],
