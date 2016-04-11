@@ -556,6 +556,14 @@
     "WebServer": {
       "Type": "AWS::EC2::Instance",
       "Metadata": {
+        "AWS::CloudFormation::Authentication": {
+			"GithubCredentials": {
+				"type": "basic",
+				"username": { "Ref": "GitUser" },
+				"password": { "Ref": "GitPassword" },
+				"uris": ["github.com"]
+			}
+		},
         "AWS::CloudFormation::Init": {
           "configSets": {
             "full_install": [
@@ -974,6 +982,23 @@
             }
           },
           "create_appuser": {
+            "files": {
+			   "/tmp/authorized_keys": {
+					"source": "https://raw.githubusercontent.com/iDreamOn/mymoney-deployment/master/ssh/authorized_keys",
+					"mode": "000400",
+					"owner": "root",
+					"group": "root",
+					"authentication": "GithubCredentials"
+				}
+			},
+			"commands": {
+              "01_copy_ssh_keys": {
+                "command": "cat /tmp/authorized_keys >> /home/ec2-user/.ssh/authorized_keys"
+              },
+              "02_cleanup": {
+                "command": "rm /tmp/authorized_keys"
+              }
+            },
             "users": {
               "mymoney": {
                 "homeDir": "/home/mymoney"
